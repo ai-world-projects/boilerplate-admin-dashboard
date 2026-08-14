@@ -8,6 +8,7 @@ evolves.
 For detailed references see the `docs/` folder:
 
 - [`docs/blueprint.md`](docs/blueprint.md) — **the target platform spec** (modules, IA, RBAC, approval workflow, data contract, phased build plan). Read this first.
+- [`docs/progress.md`](docs/progress.md) — **current progress & roadmap** (which phase is done vs. next). Read this to know where the build stands.
 - [`docs/features.md`](docs/features.md) — what each currently-built feature/page does
 - [`docs/conventions.md`](docs/conventions.md) — coding conventions & patterns
 - [`docs/ux.md`](docs/ux.md) — **UI/UX & consistency rules** (spacing, alignment, page structure, responsiveness, journeys). Follow when building or reviewing any screen.
