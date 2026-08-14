@@ -1,36 +1,55 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AVX Admin Dashboard
 
-## Getting Started
+A production-style **admin dashboard boilerplate** and home of the **AVX shared
+component library**. Built to be copied/extended for new admin apps.
 
-First, run the development server:
+**Stack:** Next.js 16 (App Router) · TypeScript · MUI v9 + MUI X DataGrid ·
+TanStack Query · React Hook Form + Zod · axios · MSW · Recharts · notistack.
+
+## Quick start
 
 ```bash
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+# open http://localhost:3000  (redirects to /dashboard)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+The dev server runs with **mock APIs enabled** (MSW) — no backend required. The
+login page is prefilled with demo credentials; any values are accepted.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command             | Description                              |
+| ------------------- | ---------------------------------------- |
+| `npm run dev`       | Dev server with hot reload + MSW mocks   |
+| `npm run build`     | Production build (must pass)             |
+| `npm run start`     | Serve the production build               |
+| `npm run lint`      | Lint                                     |
+| `npx tsc --noEmit`  | Type-check                               |
 
-## Learn More
+## Pages
 
-To learn more about Next.js, take a look at the following resources:
+- `/login` — authentication
+- `/dashboard` — KPIs + charts + recent users
+- `/subjects` — searchable, paginated CRUD table
+- `/users` — searchable, paginated CRUD table
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Connecting a real backend
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The app talks to `/api/*` through typed axios services. To switch from mocks to a
+real backend, edit `.env.local`:
 
-## Deploy on Vercel
+```bash
+NEXT_PUBLIC_API_MOCKING=disabled
+NEXT_PUBLIC_API_BASE_URL=https://api.yourbackend.com
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+No component or service code changes are needed — the backend just has to satisfy
+[`docs/api-contract.md`](docs/api-contract.md).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Documentation
+
+- [`CLAUDE.md`](CLAUDE.md) — architecture, conventions & rules (AI + human guide)
+- [`docs/features.md`](docs/features.md) — feature/page details
+- [`docs/conventions.md`](docs/conventions.md) — coding conventions
+- [`docs/api-contract.md`](docs/api-contract.md) — backend endpoint contract
