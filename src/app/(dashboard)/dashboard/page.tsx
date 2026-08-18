@@ -1,27 +1,26 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Box,
+  Button,
   Card,
   CardContent,
   CircularProgress,
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableRow,
   Typography,
 } from '@mui/material';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
-import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
-import HowToRegOutlinedIcon from '@mui/icons-material/HowToRegOutlined';
 import BoltOutlinedIcon from '@mui/icons-material/BoltOutlined';
+import PendingActionsOutlinedIcon from '@mui/icons-material/PendingActionsOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import {
-  Area,
-  AreaChart,
   Bar,
   BarChart,
   CartesianGrid,
+  Cell,
+  Legend,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -29,18 +28,24 @@ import {
 } from 'recharts';
 import { AVXPageHeader } from '@/components/AVXPageHeader';
 import { AVXStatCard } from '@/components/AVXStatCard';
-import { formatDate } from '@/utils/formatDate';
+import { PermissionGate, useAuth } from '@/auth';
 import { useDashboard } from '@/features/dashboard/useDashboard';
+import DashboardActivityFeed from '@/features/dashboard/DashboardActivityFeed';
 
 const cardIcons: Record<string, React.ReactNode> = {
   users: <PeopleAltOutlinedIcon />,
   active: <BoltOutlinedIcon />,
   pending: <PendingActionsOutlinedIcon />,
-  enrollments: <HowToRegOutlinedIcon />,
+  records: <DescriptionOutlinedIcon />,
 };
+
+const APPROVED_COLOR = '#2ea043';
+const REJECTED_COLOR = '#d32f2f';
 
 export default function DashboardPage() {
   const { data, isLoading } = useDashboard();
+  const { hasPermission } = useAuth();
+  const canReadAudit = hasPermission('audit:read');
 
   if (isLoading || !data) {
     return (
@@ -52,7 +57,22 @@ export default function DashboardPage() {
 
   return (
     <>
-      <AVXPageHeader title="Dashboard" subtitle="Overview of your platform" />
+      <AVXPageHeader
+        title="Dashboard"
+        subtitle="Overview of your platform"
+        action={
+          <PermissionGate permission="approvals:read">
+            <Button
+              component={Link}
+              href="/approvals"
+              variant="contained"
+              endIcon={<ArrowForwardIcon />}
+            >
+              Review approvals
+            </Button>
+          </PermissionGate>
+        }
+      />
 
       {/* KPI cards */}
       <Box
@@ -82,7 +102,7 @@ export default function DashboardPage() {
       <Box
         sx={{
           display: 'grid',
-          gridTemplateColumns: { xs: '1fr', lg: '2fr 1fr' },
+          gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' },
           gap: 2.5,
           mb: 3,
         }}
@@ -90,29 +110,21 @@ export default function DashboardPage() {
         <Card>
           <CardContent>
             <Typography variant="h4" sx={{ mb: 2 }}>
-              Enrollment trend
+              Records by status
             </Typography>
             <Box sx={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={data.enrollmentTrend}>
-                  <defs>
-                    <linearGradient id="enroll" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#2e7ddb" stopOpacity={0.35} />
-                      <stop offset="95%" stopColor="#2e7ddb" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
+                <BarChart data={data.recordsByStatus}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="month" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={32} />
+                  <XAxis dataKey="label" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={32} allowDecimals={false} />
                   <Tooltip />
-                  <Area
-                    type="monotone"
-                    dataKey="enrollments"
-                    stroke="#2e7ddb"
-                    strokeWidth={2}
-                    fill="url(#enroll)"
-                  />
-                </AreaChart>
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]}>
+                    {data.recordsByStatus.map((slice) => (
+                      <Cell key={slice.status} fill={slice.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             </Box>
           </CardContent>
@@ -121,16 +133,18 @@ export default function DashboardPage() {
         <Card>
           <CardContent>
             <Typography variant="h4" sx={{ mb: 2 }}>
-              Users by role
+              Approvals throughput
             </Typography>
             <Box sx={{ height: 300 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.usersByRole}>
+                <BarChart data={data.approvalsThroughput}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="role" tickLine={false} axisLine={false} />
-                  <YAxis tickLine={false} axisLine={false} width={32} />
+                  <XAxis dataKey="period" tickLine={false} axisLine={false} />
+                  <YAxis tickLine={false} axisLine={false} width={32} allowDecimals={false} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#192a56" radius={[6, 6, 0, 0]} />
+                  <Legend />
+                  <Bar dataKey="approved" name="Approved" fill={APPROVED_COLOR} radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="rejected" name="Rejected" fill={REJECTED_COLOR} radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </Box>
@@ -138,32 +152,31 @@ export default function DashboardPage() {
         </Card>
       </Box>
 
-      {/* Recent users */}
+      {/* Recent activity — reads the latest audit entries (blueprint §2.1). */}
       <Card>
         <CardContent>
           <Typography variant="h4" sx={{ mb: 1 }}>
-            Recent users
+            Recent activity
           </Typography>
-          <Table size="small">
-            <TableHead>
-              <TableRow>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Role</TableCell>
-                <TableCell>Joined</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {data.recentUsers.map((u) => (
-                <TableRow key={u._id}>
-                  <TableCell>{u.fullName}</TableCell>
-                  <TableCell>{u.email}</TableCell>
-                  <TableCell sx={{ textTransform: 'capitalize' }}>{u.role}</TableCell>
-                  <TableCell>{formatDate(u.createdAt)}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {canReadAudit ? (
+            <DashboardActivityFeed />
+          ) : (
+            <Box
+              sx={{
+                py: 4,
+                display: 'grid',
+                placeItems: 'center',
+                textAlign: 'center',
+                gap: 1,
+                color: 'text.secondary',
+              }}
+            >
+              <LockOutlinedIcon sx={{ fontSize: 36, color: 'text.disabled' }} />
+              <Typography variant="body2">
+                You don&apos;t have access to the activity log.
+              </Typography>
+            </Box>
+          )}
         </CardContent>
       </Card>
     </>

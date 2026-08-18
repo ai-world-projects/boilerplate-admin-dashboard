@@ -7,6 +7,7 @@ import Sidebar from '../Sidebar/Sidebar';
 import Header from '../Header/Header';
 import { COLLAPSED_WIDTH, DRAWER_WIDTH } from '../navConfig';
 import { notify } from '@/utils/notify';
+import { useApplyBranding } from '@/features/settings/useBrandingSettings';
 
 const COLLAPSE_KEY = 'avxSidebarCollapsed';
 
@@ -20,6 +21,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
+
+  // Re-skin the theme from the saved branding color (Phase 5d).
+  useApplyBranding();
 
   // Restore the collapsed preference after mount. Done in an effect (not a lazy
   // initializer) so SSR and the first client render agree (expanded) and there's
