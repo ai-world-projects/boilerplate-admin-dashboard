@@ -1,8 +1,7 @@
 export interface DashboardData {
   cardStats: CardStat[];
-  enrollmentTrend: TrendPoint[];
-  usersByRole: RoleSlice[];
-  recentUsers: RecentUser[];
+  recordsByStatus: RecordStatusSlice[];
+  approvalsThroughput: ThroughputPoint[];
 }
 
 export interface CardStat {
@@ -13,20 +12,15 @@ export interface CardStat {
   changePct: number;
 }
 
-export interface TrendPoint {
-  month: string;
-  enrollments: number;
-}
-
-export interface RoleSlice {
-  role: string;
+export interface RecordStatusSlice {
+  status: string; // workflow status key
+  label: string;
+  color: string; // hex, from the workflow config
   count: number;
 }
 
-export interface RecentUser {
-  _id: string;
-  fullName: string;
-  email: string;
-  role: string;
-  createdAt: string;
+export interface ThroughputPoint {
+  period: string; // e.g. "Mar"
+  approved: number;
+  rejected: number;
 }

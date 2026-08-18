@@ -20,6 +20,8 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutlined';
 import { AUTH_STORAGE_KEY, CURRENT_USER_KEY, LOGOUT_SUCCESS_MESSAGE } from '@/utils/constants';
 import { notify } from '@/utils/notify';
+import { PermissionGate } from '@/auth';
+import NotificationBell from '@/features/notifications/NotificationBell';
 
 interface HeaderProps {
   /** Current width of the desktop sidebar so the bar aligns beside it. */
@@ -86,6 +88,10 @@ export default function Header({
         </Tooltip>
 
         <Box sx={{ flex: 1 }} />
+
+        <PermissionGate permission="notifications:view">
+          <NotificationBell />
+        </PermissionGate>
 
         <IconButton onClick={(e) => setAnchorEl(e.currentTarget)} size="small">
           <Avatar sx={{ width: 34, height: 34, bgcolor: 'secondary.main' }}>A</Avatar>

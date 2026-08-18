@@ -25,7 +25,7 @@ export interface AVXFormDrawerProps {
 
 /**
  * Right-side drawer wrapping a form with a sticky header and footer actions.
- * This is the standard create/edit surface across the app (users, subjects).
+ * This is the standard create/edit surface across the app (users, records).
  */
 export default function AVXFormDrawer({
   open,

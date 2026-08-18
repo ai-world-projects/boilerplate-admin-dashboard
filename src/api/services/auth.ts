@@ -1,6 +1,11 @@
 import { api } from '../client';
 import { StandardResponse } from '../interfaces/Common';
-import { LoginData, LoginRequest, MeResponse } from '../interfaces/Auth';
+import {
+  ChangePasswordRequest,
+  LoginData,
+  LoginRequest,
+  MeResponse,
+} from '../interfaces/Auth';
 
 export async function login(
   request: LoginRequest,
@@ -20,5 +25,16 @@ export async function getMe(): Promise<StandardResponse<MeResponse>> {
 
 export async function logout(): Promise<StandardResponse<null>> {
   const response = await api.post<StandardResponse<null>>('/auth/logout');
+  return response.data;
+}
+
+/** Change the signed-in user's own password. */
+export async function changePassword(
+  request: ChangePasswordRequest,
+): Promise<StandardResponse<null>> {
+  const response = await api.put<StandardResponse<null>>(
+    '/profile/password',
+    request,
+  );
   return response.data;
 }

@@ -23,3 +23,9 @@ export interface MeResponse {
   roles: Role[];
   permissions: PermissionKey[];
 }
+
+/** Body for the profile password change (`PUT /profile/password`). */
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
+}
