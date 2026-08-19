@@ -98,8 +98,11 @@ export const mockWorkflowSettings: WorkflowSettings = {
     { key: 'archived', label: 'Archived', color: '#5f6b7a' },
   ],
   approvalLevels: [
-    { level: 0, name: 'Team Review', approverRoleIds: ['r-approver'] },
-    { level: 1, name: 'Final Approval', approverRoleIds: ['r-admin'] },
+    // Super Admin is included at every level so the dev session (signed in as a
+    // Super Admin) has a populated Approvals → Pending → "Mine" queue out of the
+    // box, without changing which records appear under "All".
+    { level: 0, name: 'Team Review', approverRoleIds: ['r-approver', 'r-super'] },
+    { level: 1, name: 'Final Approval', approverRoleIds: ['r-admin', 'r-super'] },
   ],
 };
 

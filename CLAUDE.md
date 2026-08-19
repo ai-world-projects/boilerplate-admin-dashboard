@@ -48,6 +48,37 @@ shared component library**. It is intended to be copied/extended for new admin
 apps, and its `src/components/AVX*` set is designed to be extracted into a shared
 package later with minimal churn.
 
+## Directory map
+
+```
+src/
+  app/                      # Next App Router
+    (dashboard)/            # authed route group (no URL prefix)
+      layout.tsx            #   -> wraps pages in <AppShell> behind <RouteGuard>
+      dashboard/ users/ records/ approvals/   # pages
+      audit/ notifications/ reports/ profile/  # pages
+      settings/             #   access/ workflow/ security/ branding/
+    login/                  # public login page
+    layout.tsx              # root layout -> <Providers>
+    providers.tsx           # Emotion cache, theme, QueryClient, snackbar, MSW
+    MswProvider.tsx         # starts the MSW worker before render (dev only)
+  api/
+    client.ts               # axios instance + interceptors
+    services/               # one file per domain: users, roles, records, approvals,
+                            #   audit, notifications, reports, settings, dashboard, auth
+    interfaces/             # TS types per domain + Common (StandardResponse, Paginated)
+  auth/                     # RBAC: permissions catalogue, AuthProvider/useAuth,
+                            #   PermissionGate, RouteGuard, Forbidden
+  components/               # AVX* shared component library (see conventions)
+  features/                 # per-domain hooks (TanStack Query) + RHF/Zod forms
+    users/ roles/ records/ approvals/ audit/
+    notifications/ reports/ settings/ profile/ dashboard/
+  layouts/                  # AppShell, Sidebar, Header, navConfig
+  mocks/                    # MSW handlers + in-memory mock data
+  theme/                    # getTheme(enum) factory + palette module augmentation
+  utils/                    # constants, errorHandler, formatDate, notify
+```
+
 ## How data flows (read this before adding a feature)
 
 ```
