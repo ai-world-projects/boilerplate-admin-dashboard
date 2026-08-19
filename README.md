@@ -30,9 +30,15 @@ login page is prefilled with demo credentials; any values are accepted.
 ## Pages
 
 - `/login` — authentication
-- `/dashboard` — KPIs + charts + recent users
-- `/subjects` — searchable, paginated CRUD table
-- `/users` — searchable, paginated CRUD table
+- `/dashboard` — KPIs + charts + recent activity
+- `/users` — searchable, paginated user CRUD table
+- `/records` — records CRUD, workflow status chips, filters, detail + history
+- `/approvals` — approval queue (pending/approved/rejected; approve/reject)
+- `/audit` — read-only audit log with filters
+- `/notifications` — notification center
+- `/reports` — summaries with CSV + PDF export
+- `/settings/access` · `/settings/workflow` · `/settings/security` · `/settings/branding` — settings
+- `/profile` — account details + change password
 
 ## Connecting a real backend
 
