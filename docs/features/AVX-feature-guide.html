@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AVX Feature Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0f172a; --muted:#64748b; --faint:#94a3b8;
+    --bg:#f6f7fb; --surface:#ffffff; --line:#e6e8ef;
+    --primary:#4f46e5; --primary-ink:#3730a3; --accent:#06b6d4;
+    --mock:#06b6d4; --live:#10b981;
+    --radius:16px; --shadow:0 1px 2px rgba(15,23,42,.04),0 8px 24px -12px rgba(15,23,42,.12);
+    --sidebar:264px;
+    --m-get:#2563eb; --m-post:#16a34a; --m-put:#d97706; --m-patch:#7c3aed; --m-delete:#dc2626;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,sans-serif;font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+  h1,h2,h3,h4{font-family:Poppins,sans-serif;margin:0;letter-spacing:-.01em}
+  code,.mono{font-family:'JetBrains Mono',ui-monospace,Menlo,monospace}
+  a{color:inherit}
+
+  .app{display:grid;grid-template-columns:var(--sidebar) 1fr;min-height:100vh}
+  .sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--surface);border-right:1px solid var(--line);padding:22px 16px}
+  .main{min-width:0}
+  .wrap{max-width:980px;margin:0 auto;padding:0 28px 96px}
+
+  .brand{display:flex;align-items:center;gap:11px;padding:0 6px 18px;margin-bottom:8px;border-bottom:1px solid var(--line)}
+  .brand svg{width:36px;height:36px;border-radius:10px;flex:none;box-shadow:0 4px 12px -4px rgba(79,70,229,.5)}
+  .brand b{font-family:Poppins;font-weight:700;font-size:15px;display:block;line-height:1.15}
+  .brand span{font-size:11.5px;color:var(--faint)}
+
+  nav{margin-top:14px}
+  .nav-group{font-size:10.5px;text-transform:uppercase;letter-spacing:.13em;color:var(--faint);font-weight:600;margin:18px 10px 6px}
+  .nav-link{display:flex;align-items:center;gap:9px;padding:7px 10px;border-radius:9px;color:var(--muted);text-decoration:none;font-size:13.5px;font-weight:500;cursor:pointer;transition:.15s}
+  .nav-link:hover{background:#f1f2f8;color:var(--ink)}
+  .nav-link.active{background:#eef0ff;color:var(--primary-ink);font-weight:600}
+  .nav-link .dot{width:6px;height:6px;border-radius:50%;background:var(--faint);flex:none}
+  .nav-link.active .dot{background:var(--primary)}
+
+  .topbar{position:sticky;top:0;z-index:20;background:rgba(246,247,251,.82);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+  .topbar-in{max-width:980px;margin:0 auto;padding:12px 28px;display:flex;gap:14px;align-items:center}
+  .search{flex:1;position:relative}
+  .search input{width:100%;padding:10px 12px 10px 36px;border:1px solid var(--line);border-radius:11px;background:var(--surface);font:inherit;font-size:14px;outline:none;transition:.15s}
+  .search input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(79,70,229,.12)}
+  .search svg{position:absolute;left:11px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:var(--faint)}
+  .menu-btn{display:none;border:1px solid var(--line);background:var(--surface);border-radius:10px;width:40px;height:40px;cursor:pointer;align-items:center;justify-content:center}
+
+  .apimode{display:flex;align-items:center;gap:2px;background:#eceef5;border-radius:11px;padding:3px}
+  .apimode button{border:0;background:transparent;font:inherit;font-weight:600;font-size:12.5px;padding:7px 13px;border-radius:8px;cursor:pointer;color:var(--muted);display:flex;align-items:center;gap:6px;transition:.15s}
+  .apimode button .led{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.5}
+  .apimode button[aria-pressed="true"]{background:var(--surface);box-shadow:var(--shadow)}
+  .apimode button.mock[aria-pressed="true"]{color:var(--mock)}
+  .apimode button.live[aria-pressed="true"]{color:var(--live)}
+  .apimode button[aria-pressed="true"] .led{opacity:1}
+
+  .hero{margin:36px 0 30px}
+  .status-pill{display:inline-flex;align-items:center;gap:7px;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;border-radius:999px;padding:5px 12px;font-size:12px;font-weight:600;margin-bottom:18px}
+  .status-pill .led{width:7px;height:7px;border-radius:50%;background:#10b981;box-shadow:0 0 0 3px rgba(16,185,129,.25)}
+  .hero h1{font-size:40px;font-weight:700;line-height:1.08;margin-bottom:14px}
+  .hero h1 .grad{background:linear-gradient(100deg,var(--primary),var(--accent));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p{font-size:17px;color:var(--muted);max-width:64ch;margin:0}
+  .hero .meta{display:flex;flex-wrap:wrap;gap:8px;margin-top:20px}
+  .chip{font-size:12px;font-weight:500;color:var(--muted);background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:5px 11px}
+  .chip b{color:var(--ink);font-weight:600}
+
+  section{scroll-margin-top:80px}
+  .sec-head{margin:44px 0 18px}
+  .eyebrow{font-size:11px;text-transform:uppercase;letter-spacing:.14em;color:var(--primary);font-weight:600;margin-bottom:7px}
+  .sec-head h2{font-size:25px;font-weight:600}
+  .sec-head p{color:var(--muted);margin:8px 0 0;max-width:72ch}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+  .setup-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+  .panel{padding:20px}
+  .panel h4{font-size:14px;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+  .panel .sub{font-size:12.5px;color:var(--muted);margin-bottom:12px}
+  pre{margin:0;background:#0f172a;color:#e2e8f0;border-radius:12px;padding:15px 16px;overflow-x:auto;font-family:'JetBrains Mono',monospace;font-size:12.5px;line-height:1.7}
+  pre .cm{color:#64748b} pre .k{color:#818cf8} pre .v{color:#5eead4}
+  .codewrap{position:relative}
+  .copy{position:absolute;top:9px;right:9px;background:rgba(148,163,184,.16);color:#cbd5e1;border:0;border-radius:7px;padding:5px 9px;font-size:11px;font-weight:600;cursor:pointer;font-family:Inter;transition:.15s}
+  .copy:hover{background:rgba(148,163,184,.3);color:#fff}
+  .copy.ok{background:rgba(16,185,129,.25);color:#6ee7b7}
+
+  .modebanner{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;border-radius:12px;font-size:13.5px;margin-top:14px;border:1px solid}
+  .modebanner .ic{width:20px;height:20px;flex:none;margin-top:1px}
+  .modebanner.mock{background:#ecfeff;border-color:#a5f3fc;color:#0e7490}
+  .modebanner.live{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
+  .modebanner b{font-weight:600}
+
+  .flow{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:12.5px;font-weight:500}
+  .flow .node{background:#f1f2f8;border:1px solid var(--line);border-radius:9px;padding:8px 11px;color:var(--ink)}
+  .flow .node .mono{font-size:11px;color:var(--muted);display:block;font-weight:400}
+  .flow .arr{color:var(--faint)}
+  .flow .term{border-color:transparent;color:#fff}
+  .flow .term.mock{background:var(--mock)} .flow .term.live{background:var(--live)}
+
+  .dm details{border-top:1px solid var(--line)}
+  .dm details:first-of-type{border-top:0}
+  .dm summary{cursor:pointer;padding:14px 20px;font-weight:600;font-size:14px;list-style:none;display:flex;align-items:center;gap:10px}
+  .dm summary::-webkit-details-marker{display:none}
+  .dm summary .chev{width:14px;height:14px;color:var(--faint);transition:.2s}
+  .dm details[open] summary .chev{transform:rotate(90deg)}
+  .dm summary .tagn{font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--muted);font-weight:400;margin-left:auto}
+  .dm .body{padding:0 20px 18px}
+
+  .feature{padding:22px 24px;margin-bottom:16px}
+  .feature-top{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .feature h3{font-size:18px;font-weight:600;display:flex;align-items:center;gap:10px}
+  .route{font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--primary-ink);background:#eef0ff;border:1px solid #dfe2ff;border-radius:7px;padding:3px 8px;font-weight:500}
+  .perms{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+  .perm{font-family:'JetBrains Mono',monospace;font-size:10.5px;color:var(--muted);background:#f4f5f9;border:1px solid var(--line);border-radius:6px;padding:3px 7px}
+  .perm.pub{color:#047857;background:#ecfdf5;border-color:#a7f3d0}
+
+  .plain{display:flex;gap:10px;align-items:baseline;background:#f5f6ff;border-left:3px solid var(--primary);padding:11px 14px;border-radius:0 10px 10px 0;margin:14px 0 0;font-size:14px}
+  .plain b{font-family:Poppins;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--primary);flex:none;padding-top:2px}
+  .how{color:#334155;margin:14px 0 0}
+
+  .caps{margin:16px 0 0}
+  .caps h5{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:600;margin:0 0 9px}
+  .caps ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:7px 22px}
+  @media(max-width:640px){.caps ul{grid-template-columns:1fr}}
+  .caps li{position:relative;padding-left:22px;font-size:13.5px;color:#334155}
+  .caps li::before{content:"";position:absolute;left:2px;top:8px;width:11px;height:11px;border-radius:3px;background:linear-gradient(120deg,var(--primary),var(--accent))}
+
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:22px;margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+  @media(max-width:640px){.cols{grid-template-columns:1fr;gap:18px}}
+  .col h5{font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:600;margin:0 0 10px}
+  .acts{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px}
+  .acts li{display:flex;align-items:center;gap:9px;font-size:13.5px}
+  .acts .cta{background:linear-gradient(100deg,var(--primary),#6366f1);color:#fff;border-radius:8px;padding:4px 10px;font-size:12px;font-weight:600;white-space:nowrap;box-shadow:0 3px 8px -3px rgba(79,70,229,.5)}
+  .acts .cta.sec{background:#f1f2f8;color:var(--primary-ink);box-shadow:none;border:1px solid #dfe2ff}
+  .acts .cta.danger{background:#fef2f2;color:#dc2626;box-shadow:none;border:1px solid #fecaca}
+  .acts small{color:var(--faint);font-family:'JetBrains Mono',monospace;font-size:10.5px}
+
+  .eps{display:flex;flex-direction:column;gap:6px}
+  .epc{border:1px solid var(--line);border-radius:10px;overflow:hidden}
+  .ep{display:flex;align-items:center;gap:9px;padding:8px 10px;cursor:pointer;user-select:none;background:var(--surface);transition:.12s}
+  .ep:hover{background:#f8f9fc}
+  .verb{font-family:'JetBrains Mono',monospace;font-size:10px;font-weight:600;border-radius:5px;padding:2px 6px;min-width:52px;text-align:center;color:#fff}
+  .verb.GET{background:var(--m-get)} .verb.POST{background:var(--m-post)} .verb.PUT{background:var(--m-put)} .verb.PATCH{background:var(--m-patch)} .verb.DELETE{background:var(--m-delete)}
+  .ep .path{font-family:'JetBrains Mono',monospace;color:#334155;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .ep .tag{margin-left:auto;font-size:9.5px;font-weight:700;letter-spacing:.05em;padding:2px 7px;border-radius:999px;text-transform:uppercase;flex:none}
+  .ep .tag.mock{background:#ecfeff;color:#0e7490;border:1px solid #a5f3fc}
+  .ep .tag.live{background:#ecfdf5;color:#047857;border:1px solid #a7f3d0}
+  .ep .chev{width:13px;height:13px;color:var(--faint);flex:none;transition:.2s}
+  .epc.open .ep .chev{transform:rotate(90deg)}
+  .epd{display:none;border-top:1px solid var(--line);background:#fbfbfe;padding:12px}
+  .epc.open .epd{display:block}
+  .epd pre{font-size:11.5px;padding:12px 13px}
+  .epd .lab{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--faint);font-weight:600;margin:0 0 6px}
+  .epd .lab.res{margin-top:11px}
+
+  .empty{padding:40px;text-align:center;color:var(--muted)}
+  footer{color:var(--faint);font-size:12.5px;text-align:center;margin-top:60px;padding-top:24px;border-top:1px solid var(--line)}
+
+  .overlay{display:none}
+  @media(max-width:900px){
+    .app{grid-template-columns:1fr}
+    .sidebar{position:fixed;left:0;top:0;z-index:40;width:280px;transform:translateX(-100%);transition:transform .22s ease}
+    .sidebar.open{transform:none;box-shadow:0 12px 40px -8px rgba(15,23,42,.3)}
+    .menu-btn{display:flex}
+    .overlay{display:block;position:fixed;inset:0;background:rgba(15,23,42,.4);z-index:35;opacity:0;pointer-events:none;transition:.2s}
+    .overlay.on{opacity:1;pointer-events:auto}
+    .setup-grid{grid-template-columns:1fr}
+    .hero h1{font-size:31px}
+    .topbar-in,.wrap{padding-left:18px;padding-right:18px}
+  }
+  @media(prefers-reduced-motion:reduce){*{transition:none!important;scroll-behavior:auto}}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs><linearGradient id="b" x1="0" y1="0" x2="512" y2="512" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#4f46e5"/><stop offset="1" stop-color="#06b6d4"/></linearGradient></defs>
+        <rect width="512" height="512" rx="120" fill="url(#b)"/>
+        <g fill="none" stroke="#fff" stroke-width="14" stroke-linecap="round" opacity=".92"><circle cx="256" cy="256" r="140"/><ellipse cx="256" cy="256" rx="83" ry="140"/><line x1="256" y1="116" x2="256" y2="396"/><line x1="116" y1="256" x2="396" y2="256"/></g>
+        <g fill="#fff"><circle cx="256" cy="116" r="15"/><circle cx="173" cy="256" r="15"/><circle cx="339" cy="256" r="15"/><circle cx="256" cy="396" r="15"/><circle cx="256" cy="256" r="20"/></g>
+        <circle cx="256" cy="256" r="27" fill="none" stroke="#5eead4" stroke-width="7"/>
+      </svg>
+      <div><b>AVX Admin</b><span>Feature guide</span></div>
+    </div>
+    <nav id="nav"></nav>
+  </aside>
+  <div class="overlay" id="overlay"></div>
+
+  <div class="main">
+    <div class="topbar">
+      <div class="topbar-in">
+        <button class="menu-btn" id="menuBtn" aria-label="Open menu"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg></button>
+        <div class="search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="search" type="search" placeholder="Search features, routes, permissions, endpoints…" autocomplete="off">
+        </div>
+        <div class="apimode" role="group" aria-label="API mode">
+          <button class="mock" data-mode="mock" aria-pressed="true"><span class="led"></span>Mock</button>
+          <button class="live" data-mode="live" aria-pressed="false"><span class="led"></span>Real API</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <header class="hero">
+        <div class="eyebrow">AVX Feature Guide</div>
+        <p style="font-size:13px;color:var(--muted);margin:2px 0 14px;max-width:62ch">AVX stands for <b style="color:var(--primary-ink)">[ add the expansion here ]</b> — the shared component library the app is built on, giving every screen one consistent look.</p>
+        <div class="status-pill"><span class="led"></span>All 5 blueprint phases shipped · no placeholders</div>
+        <h1>What the <span class="grad">admin platform</span> does — and the API behind it.</h1>
+        <p>Each module explained in plain terms, with what you can do and the exact request/response the backend must implement. Flip the switch up top to see how the same app runs on mock data or a real backend.</p>
+        <div class="meta">
+          <span class="chip"><b>Next.js 16</b></span><span class="chip"><b>MUI v9</b></span><span class="chip"><b>TanStack Query</b></span><span class="chip"><b>RHF</b> + Zod</span><span class="chip"><b>MSW</b> mocks</span><span class="chip">RBAC-gated</span>
+        </div>
+      </header>
+
+      <section id="setup">
+        <div class="sec-head"><div class="eyebrow">Getting started</div><h2>Install &amp; run</h2>
+          <p>One codebase, two data sources. In development, MSW serves the full API from memory. Point it at a real backend by changing environment variables only — no component or service code changes.</p></div>
+        <div class="setup-grid">
+          <div class="card panel"><h4>1 · Install &amp; start</h4><div class="sub">Node 18+ and npm. Dev server at localhost:3000.</div>
+            <div class="codewrap"><button class="copy" data-copy>Copy</button><pre><span class="cm"># from the repo root</span>
+npm install
+npm run dev      <span class="cm"># mocks on</span>
+npm run build    <span class="cm"># CI gate</span>
+npm run start    <span class="cm"># serve build</span></pre></div>
+          </div>
+          <div class="card panel"><h4>2 · Choose the data source <span id="modeLabel" class="mono" style="font-size:11px;color:var(--mock)">— mock</span></h4><div class="sub">Set these in <code>.env.local</code>. The switch above previews each mode.</div>
+            <div class="codewrap"><button class="copy" data-copy>Copy</button><pre id="envBlock"></pre></div>
+            <div id="modeBanner"></div>
+          </div>
+        </div>
+        <div class="card panel" style="margin-top:16px"><h4>How a request flows</h4>
+          <div class="sub">Components never call a service directly — they go through the feature hook. The last hop is the only thing that changes between modes.</div>
+          <div class="flow" id="flow"></div>
+          <p style="font-size:12.5px;color:var(--muted);margin:14px 0 0">Auth token rides in a <code>token</code> header; a <code>401</code>/<code>403</code> bounces to <code>/login</code>. Every response uses the <code>StandardResponse&lt;T&gt;</code> envelope; lists use <code>Paginated&lt;T&gt;</code> (both defined under Data model).</p>
+        </div>
+      </section>
+
+      <section id="datamodel">
+        <div class="sec-head"><div class="eyebrow">For the backend</div><h2>Data model</h2>
+          <p>Every shape the client sends and expects. These are the source of truth for the backend — the real API must return the same envelope, pagination, and entity fields. Shapes marked <em>representative</em> should be confirmed against <code>src/api/interfaces/</code>.</p></div>
+        <div class="card dm" id="dm"></div>
+      </section>
+
+      <div id="features"></div>
+
+      <footer>AVX Admin Dashboard · interactive feature guide · the API switch reflects <code>NEXT_PUBLIC_API_MOCKING</code> only — no live calls are made from this page.</footer>
+    </div>
+  </div>
+</div>
+
+<script>
+const GROUPS=[{id:'overview',label:'Overview'},{id:'management',label:'Management'},{id:'insights',label:'Insights'},{id:'settings',label:'Settings'},{id:'account',label:'Account'}];
+
+const MODEL=[
+ {title:'Envelope & shared', tag:'Common.ts', code:
+`interface StandardResponse<T> {
+  result: "success" | "error";   // surfaced state
+  message: string;               // human-readable, shown in toasts
+  data: T;
+}
+
+interface Paginated<T> {
+  total: number;
+  page: number;        // 1-indexed
+  limit: number;
+  totalPages: number;
+  data: T[];
+}
+
+interface GenericDeleteResponse { _id: string; deleted: boolean; }
+
+// List query params (all optional): keyword, page, limit  + per-module filters`},
+ {title:'Users', tag:'User.ts', code:
+`interface User {
+  _id: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleIds: string[];                         // many-to-many with Role
+  status: "active" | "inactive" | "pending";
+  lastLoginAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface UserFormRequest {                  // POST body; PUT uses Partial<>
+  firstName: string;
+  lastName: string;
+  email: string;
+  roleIds: string[];
+  status: "active" | "inactive" | "pending";
+}`},
+ {title:'Roles & permissions', tag:'Rbac.ts', code:
+`interface Role {
+  _id: string;
+  name: string;
+  description: string;
+  permissions: string[];   // permission keys, e.g. "records:approve"
+  isSystem: boolean;       // system roles can't be deleted / renamed
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Permission {     // static catalogue, not CRUD
+  key: string;             // "resource:action"
+  label: string;
+  group: string;           // "Users" | "Records" | ...
+}
+
+interface RoleFormRequest { name: string; description: string; permissions: string[]; }`},
+ {title:'Records & approvals', tag:'Record.ts', code:
+`interface RecordItem {
+  _id: string;
+  title: string;
+  description: string;
+  status: string;                // references a Workflow status key
+  ownerId: string;
+  ownerName: string;             // denormalized for list display
+  currentApprovalLevel: number;  // 0-based index into workflow levels
+  attachments: Attachment[];
+  isArchived: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Attachment {
+  _id: string; fileName: string; fileUrl: string;
+  mimeType: string; sizeBytes: number; uploadedAt: string;
+}
+
+interface ApprovalAction {       // one entry in a record's history
+  _id: string; recordId: string;
+  actorId: string; actorName: string;
+  level: number;
+  action: "submit" | "approve" | "reject";
+  remarks: string;
+  createdAt: string;
+}
+
+interface RecordFormRequest { title: string; description: string; status: string; }`},
+ {title:'Audit & notifications', tag:'Audit.ts / Notification.ts', code:
+`interface AuditEntry {          // immutable
+  _id: string;
+  actorId: string; actorName: string;
+  action: string;               // "record.approve" | "user.create" | ...
+  entity: string;               // "Record" | "User" | ...
+  entityId: string;
+  before: unknown | null;       // snapshot
+  after: unknown | null;        // snapshot
+  ip: string;
+  createdAt: string;
+}
+
+interface Notification {
+  _id: string; userId: string;  // recipient
+  title: string; body: string;
+  type: string;                 // "approval.assigned" | "record.approved" | ...
+  isRead: boolean;
+  link: string | null;          // deep link, e.g. "/records/:id"
+  createdAt: string;
+}
+
+// GET /notifications data = Paginated<Notification> & { unreadCount: number }`},
+ {title:'Settings', tag:'Settings.ts', code:
+`interface WorkflowSettings {
+  statuses: { key: string; label: string; color: string }[];
+  approvalLevels: { level: number; name: string; approverRoleIds: string[] }[];
+}
+
+interface SecuritySettings {
+  password: {
+    minLength: number; requireUpper: boolean;
+    requireNumber: boolean; requireSymbol: boolean; expiryDays: number;
+  };
+  sessionTimeoutMinutes: number;
+  lockout: { maxAttempts: number; lockMinutes: number };
+}
+
+interface BrandingSettings {
+  appName: string;
+  logoUrl: string;
+  primaryColor: string;   // hex; converted to --rgb-primary
+}`},
+ {title:'Auth, dashboard & reports', tag:'Auth.ts / Dashboard.ts / Reports.ts', code:
+`interface MeResponse { user: User; roles: Role[]; permissions: string[]; }
+interface ChangePasswordRequest { currentPassword: string; newPassword: string; }
+
+// representative — confirm against src/api/interfaces/
+interface DashboardData {
+  cardStats: { key: string; label: string; value: number; delta: number }[];
+  recordsByStatus: { status: string; count: number }[];
+  approvalsThroughput: { period: string; approved: number; rejected: number }[];
+}
+
+// representative
+interface ReportsSummary {
+  users: { total: number; active: number; pending: number; inactive: number };
+  recordsByStatus: { status: string; count: number }[];
+  approvalTurnaround: { avgHours: number; approved: number; rejected: number };
+}
+type ReportType = "users" | "records" | "approvals";
+type ReportFormat = "csv" | "pdf";`},
+];
+
+const F=[
+{group:'overview',id:'dashboard',name:'Dashboard',route:'/dashboard',perms:['dashboard:view'],
+ plain:'Your home screen — the numbers and charts that tell you how the system is doing right now, and a shortcut to what needs you.',
+ how:'Loads one summary payload and shows it as KPI cards (with period-over-period change), a records-by-status chart, an approvals-throughput chart (approved vs rejected over time), and a recent-activity feed drawn from the audit log.',
+ caps:['See totals at a glance (users, records, pending approvals)','Spot trends over time in the charts','Jump straight into the Pending Approvals queue','Read the latest system activity'],
+ actions:[['Open pending queue','sec'],['Read recent activity','sec']],
+ eps:[{v:'GET',p:'/dashboard',r:'DashboardData'}],
+ kw:'kpi charts stats recent activity throughput home'},
+
+{group:'overview',id:'notifications',name:'Notifications',route:'/notifications',perms:['notifications:view'],
+ plain:'Your personal alerts — the app tells you when something needs you or something you own has changed.',
+ how:'An in-app center listing your notifications with read/unread styling and a "mark all read" action. The header bell shows an unread badge and a dropdown of the latest few. Notifications are generated by workflow events (an approval assigned to you, your record approved/rejected).',
+ caps:['See unread count on the header bell','Open the full center and read items','Mark one — or all — as read','Click through to the record via a deep link'],
+ actions:[['Mark all read','cta'],['Open notification','sec'],['Follow deep link','sec']],
+ eps:[{v:'GET',p:'/notifications',q:'page?, limit?',r:'Paginated<Notification> & { unreadCount: number }'},
+      {v:'PATCH',p:'/notifications/:id/read',r:'Notification'},
+      {v:'POST',p:'/notifications/read-all',r:'{ updated: number }'}],
+ kw:'bell unread badge alerts inbox'},
+
+{group:'management',id:'users',name:'Users',route:'/users',perms:['users:read'],
+ plain:'The staff directory plus account admin — who can log in, and what they are.',
+ how:'A searchable, paginated list with a status filter. Create and edit through a side drawer that captures name, email, status, and one or more roles. Rows can be activated/deactivated or deleted.',
+ caps:['Search by name or email; filter by status','Add and edit people in a drawer','Assign multiple roles per user','Activate or deactivate an account','Delete a user'],
+ actions:[['Create user','cta','users:create'],['Edit','sec','users:update'],['Activate / Deactivate','sec','users:update'],['Delete','danger','users:delete']],
+ eps:[{v:'GET',p:'/users',q:'keyword?, page?, limit?, status?, roleId?',r:'Paginated<User>'},
+      {v:'POST',p:'/users',b:'UserFormRequest { firstName, lastName, email, roleIds: string[], status }',r:'User'},
+      {v:'PUT',p:'/users/:id',b:'Partial<UserFormRequest>',r:'User'},
+      {v:'DELETE',p:'/users/:id',r:'GenericDeleteResponse'},
+      {v:'PATCH',p:'/users/:id/status',b:'{ status: "active" | "inactive" | "pending" }',r:'User'},
+      {v:'PUT',p:'/users/:id/roles',b:'{ roleIds: string[] }',r:'User'}],
+ kw:'people accounts roles status invite members'},
+
+{group:'management',id:'records',name:'Records',route:'/records',perms:['records:read'],
+ plain:'The main "things" the system manages — a generic item (rename per project: applications, requests, documents…) that moves through an approval process.',
+ how:'Search and filter by status, owner, and created-date; each row shows a status chip driven by the live Workflow config. A detail drawer holds the fields, attachments, and the full approval history. Archiving is a restorable soft-delete — nothing is hard-deleted.',
+ caps:['Browse, search, and filter the list','Create and edit records in a drawer','View attachments and approval history','Archive and restore (soft-delete)','Status colors follow the Workflow settings'],
+ actions:[['Create record','cta','records:create'],['Edit','sec','records:update'],['Archive / Restore','danger','records:archive'],['View details','sec']],
+ eps:[{v:'GET',p:'/records',q:'keyword?, page?, limit?, status?, ownerId?, dateFrom?, dateTo?',r:'Paginated<RecordItem>'},
+      {v:'POST',p:'/records',b:'RecordFormRequest { title, description, status }',r:'RecordItem'},
+      {v:'GET',p:'/records/:id',r:'RecordItem'},
+      {v:'PUT',p:'/records/:id',b:'Partial<RecordFormRequest>',r:'RecordItem'},
+      {v:'PATCH',p:'/records/:id/archive',b:'{ isArchived: boolean }',r:'RecordItem'},
+      {v:'GET',p:'/records/:id/history',r:'ApprovalAction[]'}],
+ kw:'content items documents attachments archive soft delete owner'},
+
+{group:'management',id:'approvals',name:'Approvals',route:'/approvals',perms:['approvals:read'],
+ plain:'The review desk — where the right people say yes or no to records, in order.',
+ how:'A queue over records, split into Pending (mine / all), Approved, and Rejected tabs. A record in Pending is shown to approvers whose role matches its current level. Approving a non-final level advances the record to the next level; approving the final level sets it Approved; rejecting requires remarks and sets it Rejected. Every decision appends to the record’s history and emits an audit entry and a notification.',
+ caps:['See what is waiting on YOU (Mine) or everyone (All)','Approve — advances to the next level or finishes','Reject with required remarks','Multi-step sign-off across ordered levels','Every action is logged and notifies people'],
+ actions:[['Approve','cta','approvals:approve'],['Reject (remarks required)','danger','approvals:reject'],['Switch tab / scope','sec']],
+ eps:[{v:'GET',p:'/approvals',q:'tab: "pending"|"approved"|"rejected", scope?: "mine"|"all", keyword?, page?, limit?',r:'Paginated<RecordItem>'},
+      {v:'POST',p:'/records/:id/approve',b:'{ remarks?: string }',r:'RecordItem'},
+      {v:'POST',p:'/records/:id/reject',b:'{ remarks: string }   // required',r:'RecordItem'}],
+ kw:'review queue approve reject remarks workflow levels decision sign-off'},
+
+{group:'insights',id:'reports',name:'Reports',route:'/reports',perms:['reports:view'],
+ plain:'Read-only summaries you can download — counts and averages rolled up to share outside the app.',
+ how:'Where the Dashboard is the live at-a-glance view inside the app, Reports are exportable roll-ups: user totals, records grouped by status, and approval turnaround (how long decisions take). Each summary exports to CSV or PDF; the backend generates the file and the client just downloads the bytes.',
+ caps:['View summary tiles (users, records-by-status, turnaround)','Export any summary as CSV','Export any summary as PDF','Share figures with people outside the app'],
+ actions:[['Export CSV','cta','reports:export'],['Export PDF','cta','reports:export']],
+ eps:[{v:'GET',p:'/reports/summary',r:'ReportsSummary'},
+      {v:'GET',p:'/reports/export?type=&format=',q:'type: "users"|"records"|"approvals", format: "csv"|"pdf"',r:'binary blob (text/csv | application/pdf)'}],
+ kw:'export csv pdf summary turnaround download analytics roll-up'},
+
+{group:'insights',id:'audit',name:'Audit Log',route:'/audit',perms:['audit:read'],
+ plain:'The system’s black box — an unchangeable history of who did what, and when.',
+ how:'A read-only, immutable list. Unlike notifications (which are transient and for you), the audit log is a permanent compliance trail. Filter by actor, action type, entity, and date range, or flip the "Admin activity" preset to scope it to admin-role actors. Entries are written automatically by approval transitions and other mutations.',
+ caps:['Filter by actor, action, entity, and date','Toggle an Admin-activity-only view','See before/after snapshots per entry','Immutable — nothing here can be edited'],
+ actions:[['Filter by actor / action','sec'],['Toggle Admin activity','sec']],
+ eps:[{v:'GET',p:'/audit',q:'actorId?, action?, entity?, dateFrom?, dateTo?, adminOnly?, keyword?, page?, limit?',r:'Paginated<AuditEntry>'}],
+ kw:'history log immutable trail actor action entity compliance'},
+
+{group:'settings',id:'access',name:'Access (RBAC)',route:'/settings/access',perms:['settings:rbac'],
+ plain:'The permission control room — build roles (bundles of permissions) and hand them to users; that decides what each person can see and click.',
+ how:'RBAC = Role-Based Access Control. A permission is one ability (e.g. records:approve); a role groups permissions (e.g. "Approver"); users hold one or more roles. Create and edit roles through a grouped permission matrix with select-all per group. System roles have a locked name and can’t be deleted. Roles feed the user role picker and the permission set returned at sign-in.',
+ caps:['Create and edit roles','Toggle permissions via a grouped matrix','Protect system roles from edits/deletion','Drives what every screen and button allows'],
+ actions:[['Create role','cta','settings:rbac'],['Edit permissions','sec','settings:rbac'],['Delete role','danger','settings:rbac']],
+ eps:[{v:'GET',p:'/roles',r:'Role[]'},
+      {v:'POST',p:'/roles',b:'RoleFormRequest { name, description, permissions: string[] }',r:'Role'},
+      {v:'PUT',p:'/roles/:id',b:'Partial<RoleFormRequest>',r:'Role'},
+      {v:'DELETE',p:'/roles/:id',r:'GenericDeleteResponse'},
+      {v:'GET',p:'/permissions',r:'Permission[]'}],
+ kw:'roles permissions matrix rbac access control'},
+
+{group:'settings',id:'workflow',name:'Workflow',route:'/settings/workflow',perms:['settings:workflow'],
+ plain:'The rulebook for how records move — the statuses a record can be in, and the ladder of approval levels (who signs off, in what order). Records and Approvals both obey what you set here.',
+ how:'Define the set of statuses (each with a label and color) and the ordered approval levels, mapping each level to the approver role(s) that can act on it. Example: statuses Draft → Pending → Approved / Rejected; levels 0 "First review" (Approver role) and 1 "Final approval" (Admin role). Change these and the record status chips and who sees what in the approvals queue update accordingly.',
+ caps:['Add, rename, and recolor statuses','Define an ordered set of approval levels','Assign approver roles to each level','Drives status chips + the approval queue live'],
+ actions:[['Edit statuses','sec','settings:workflow'],['Reorder levels','sec','settings:workflow'],['Save changes','cta','settings:workflow']],
+ eps:[{v:'GET',p:'/settings/workflow',r:'WorkflowSettings'},
+      {v:'PUT',p:'/settings/workflow',b:'WorkflowSettings',r:'WorkflowSettings'}],
+ kw:'statuses levels approvers color state machine configure rulebook'},
+
+{group:'settings',id:'security',name:'Security',route:'/settings/security',perms:['settings:security'],
+ plain:'The account safety rules — password requirements, session length, and lockout after failed logins.',
+ how:'One form grouped into Password rules (length and character requirements, expiry), Session (idle timeout), and Lockout (max attempts and lock duration).',
+ caps:['Set password strength + expiry rules','Set the session idle timeout','Set failed-attempt lockout thresholds'],
+ actions:[['Set password rules','sec','settings:security'],['Save changes','cta','settings:security']],
+ eps:[{v:'GET',p:'/settings/security',r:'SecuritySettings'},
+      {v:'PUT',p:'/settings/security',b:'SecuritySettings',r:'SecuritySettings'}],
+ kw:'password session timeout lockout policy'},
+
+{group:'settings',id:'branding',name:'Branding',route:'/settings/branding',perms:['settings:branding'],
+ plain:'White-label controls — set the app name, logo, and primary color; the color re-skins the whole theme instantly.',
+ how:'Set the app name, logo URL, and primary color. The chosen hex is converted to an RGB triplet and written to the --rgb-primary CSS variable, re-skinning the theme live. The app shell applies the saved color on load.',
+ caps:['Set the app name','Set the logo URL','Pick a primary color that re-skins the theme live'],
+ actions:[['Pick primary color','sec','settings:branding'],['Save changes','cta','settings:branding']],
+ eps:[{v:'GET',p:'/settings/branding',r:'BrandingSettings'},
+      {v:'PUT',p:'/settings/branding',b:'BrandingSettings',r:'BrandingSettings'}],
+ kw:'theme logo color appname white label skin'},
+
+{group:'account',id:'profile',name:'My Profile',route:'/profile',perms:['(any authenticated)'],
+ plain:'Your own account page — see your details and roles, and change your password.',
+ how:'Available to any signed-in user. Shows account details and the roles/permissions you hold (from the auth context), plus a change-password form. Two-factor is deferred for now.',
+ caps:['View your account details','See your roles and permissions','Change your own password'],
+ actions:[['Change password','cta'],['View my roles','sec']],
+ eps:[{v:'GET',p:'/auth/me',r:'MeResponse { user, roles, permissions }'},
+      {v:'PUT',p:'/profile/password',b:'{ currentPassword, newPassword }',r:'null'}],
+ kw:'account me password roles self'},
+
+{group:'account',id:'auth',name:'Authentication',route:'/login',perms:['(public)'],
+ plain:'Signing in and out.',
+ how:'The public entry point. Validates email and password, stores the returned token, and redirects into the dashboard. The demo mock accepts any credentials and signs you in as Super Admin so every screen is reachable. Logout lives in the header account menu.',
+ caps:['Sign in (demo accepts anything → Super Admin)','Session token stored for API calls','Log out from the header menu'],
+ actions:[['Sign in','cta'],['Log out','sec']],
+ eps:[{v:'POST',p:'/auth/login',b:'{ email, password }',r:'{ user: User, token: string, expiresIn: number }'},
+      {v:'POST',p:'/auth/logout',r:'null'},
+      {v:'GET',p:'/auth/me',r:'MeResponse { user, roles, permissions }'}],
+ kw:'login signin logout session token credentials'},
+];
+
+let MODE='mock';
+const ENV={mock:[['# .env.local','cm'],['NEXT_PUBLIC_API_MOCKING','k','=','enabled','v']],
+  live:[['# .env.local','cm'],['NEXT_PUBLIC_API_BASE_URL','k','=','https://api.your-domain.com','v'],['NEXT_PUBLIC_API_MOCKING','k','=','disabled','v'],['','cm'],['# (or remove the mocking flag entirely)','cm']]};
+const esc=s=>s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+function renderEnv(){
+  const lines=ENV[MODE].map(p=>p.length===2?`<span class="${p[1]}">${p[0]}</span>`:`<span class="k">${p[0]}</span>${p[2]}<span class="v">${p[3]}</span>`);
+  document.getElementById('envBlock').innerHTML=lines.join('\n');
+  const ml=document.getElementById('modeLabel');ml.textContent=MODE==='mock'?'— mock':'— real API';ml.style.color=MODE==='mock'?'var(--mock)':'var(--live)';
+  const b=document.getElementById('modeBanner');
+  if(MODE==='mock'){b.className='modebanner mock';b.innerHTML=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/><circle cx="12" cy="12" r="4"/></svg><div><b>Mock mode.</b> MSW intercepts every <code>/api/*</code> call and serves seeded data from memory. Great for demos and offline dev — no backend needed.</div>`;}
+  else{b.className='modebanner live';b.innerHTML=`<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14M13 6l6 6-6 6"/></svg><div><b>Real API.</b> Requests hit your backend at the base URL — the services already call these paths, so no code changes. Your backend must return the shapes in the Data model and each endpoint below.</div>`;}
+  renderFlow();
+  document.querySelectorAll('.ep .tag').forEach(t=>{t.className='tag '+MODE;t.textContent=MODE==='mock'?'MSW':'Backend';});
+}
+function renderFlow(){
+  const term=MODE==='mock'?`<span class="node term mock">MSW handler<span class="mono">mock, in-memory</span></span>`:`<span class="node term live">Your backend<span class="mono">real API</span></span>`;
+  document.getElementById('flow').innerHTML=`<span class="node">Page<span class="mono">app/**/page.tsx</span></span><span class="arr">→</span><span class="node">Hook<span class="mono">TanStack Query</span></span><span class="arr">→</span><span class="node">Service<span class="mono">api/services</span></span><span class="arr">→</span><span class="node">axios<span class="mono">interceptors</span></span><span class="arr">→</span>${term}`;
+}
+function renderModel(){
+  document.getElementById('dm').innerHTML=MODEL.map((m,i)=>`<details ${i===0?'open':''}>
+    <summary><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>${m.title}<span class="tagn">${m.tag}</span></summary>
+    <div class="body"><div class="codewrap"><button class="copy" data-copy>Copy</button><pre>${esc(m.code)}</pre></div></div></details>`).join('');
+}
+function epDetail(e){
+  let req='';
+  if(e.q) req+=`<span class="cm">query</span>  ${esc(e.q)}\n`;
+  if(e.b) req+=`<span class="cm">body</span>   ${esc(e.b)}\n`;
+  if(!req) req=`<span class="cm">no params</span>\n`;
+  return `<div class="epd"><div class="lab">Request</div><pre>${req.trimEnd()}</pre><div class="lab res">Response · data</div><pre>${esc(e.r)}</pre><div style="font-size:11px;color:var(--faint);margin-top:8px">wrapped in <code>StandardResponse&lt;…&gt;</code></div></div>`;
+}
+function epRow(e){
+  return `<div class="epc"><div class="ep"><span class="verb ${e.v}">${e.v}</span><span class="path">${esc(e.p)}</span><span class="tag ${MODE}">${MODE==='mock'?'MSW':'Backend'}</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg></div>${epDetail(e)}</div>`;
+}
+function actList(acts){return `<ul class="acts">${acts.map(([l,k,p])=>`<li><span class="cta ${k==='cta'?'':k}">${l}</span>${p?`<small>${p}</small>`:''}</li>`).join('')}</ul>`;}
+function permList(perms){return perms.map(p=>`<span class="perm ${p.startsWith('(')?'pub':''}">${p}</span>`).join('');}
+
+function renderFeatures(){
+  const host=document.getElementById('features');host.innerHTML='';
+  GROUPS.forEach(g=>{
+    const items=F.filter(f=>f.group===g.id);
+    const sec=document.createElement('section');sec.id='grp-'+g.id;
+    sec.innerHTML=`<div class="sec-head"><div class="eyebrow">${g.label}</div><h2>${g.label} modules</h2></div>`;
+    items.forEach(f=>{
+      const el=document.createElement('div');el.className='card feature';el.id=f.id;
+      el.dataset.search=(f.name+' '+f.route+' '+f.perms.join(' ')+' '+f.kw+' '+f.plain+' '+f.eps.map(e=>e.p).join(' ')).toLowerCase();
+      el.innerHTML=`
+        <div class="feature-top"><h3>${f.name}<span class="route">${f.route}</span></h3><div class="perms">${permList(f.perms)}</div></div>
+        <div class="plain"><b>In plain terms</b><span>${f.plain}</span></div>
+        <p class="how">${f.how}</p>
+        <div class="caps"><h5>What it can do</h5><ul>${f.caps.map(c=>`<li>${c}</li>`).join('')}</ul></div>
+        <div class="cols">
+          <div class="col"><h5>Actions</h5>${actList(f.actions)}</div>
+          <div class="col"><h5>Endpoints — tap for fields</h5><div class="eps">${f.eps.map(epRow).join('')}</div></div>
+        </div>`;
+      sec.appendChild(el);
+    });
+    host.appendChild(sec);
+  });
+}
+function renderNav(){
+  let html=`<div class="nav-group">Guide</div>
+    <a class="nav-link" href="#setup"><span class="dot"></span>Getting started</a>
+    <a class="nav-link" href="#datamodel"><span class="dot"></span>Data model</a>`;
+  GROUPS.forEach(g=>{html+=`<div class="nav-group">${g.label}</div>`;F.filter(f=>f.group===g.id).forEach(f=>html+=`<a class="nav-link" href="#${f.id}"><span class="dot"></span>${f.name}</a>`);});
+  document.getElementById('nav').innerHTML=html;
+}
+function wireSearch(){
+  const input=document.getElementById('search');
+  input.addEventListener('input',()=>{
+    const q=input.value.trim().toLowerCase();let anyG=false;
+    GROUPS.forEach(g=>{const sec=document.getElementById('grp-'+g.id);let any=false;
+      sec.querySelectorAll('.feature').forEach(c=>{const hit=!q||c.dataset.search.includes(q);c.style.display=hit?'':'none';if(hit)any=true;});
+      sec.style.display=any?'':'none';if(any)anyG=true;});
+    let e=document.getElementById('emptyState');
+    if(!anyG){if(!e){e=document.createElement('div');e.id='emptyState';e.className='card empty';document.getElementById('features').appendChild(e);}
+      e.textContent=`No modules match “${input.value}”. Try a route like /records or a permission like records:approve.`;}
+    else if(e)e.remove();
+  });
+}
+function wireCopy(){document.addEventListener('click',e=>{const b=e.target.closest('[data-copy]');if(!b)return;
+  const pre=b.parentElement.querySelector('pre');navigator.clipboard?.writeText(pre.innerText).then(()=>{const t=b.textContent;b.textContent='Copied';b.classList.add('ok');setTimeout(()=>{b.textContent=t;b.classList.remove('ok');},1400);});});}
+function wireEndpoints(){document.getElementById('features').addEventListener('click',e=>{const row=e.target.closest('.ep');if(!row)return;row.parentElement.classList.toggle('open');});}
+function wireMode(){document.querySelectorAll('.apimode button').forEach(btn=>btn.addEventListener('click',()=>{MODE=btn.dataset.mode;document.querySelectorAll('.apimode button').forEach(b=>b.setAttribute('aria-pressed',b===btn));renderEnv();}));}
+function wireDrawer(){const sb=document.getElementById('sidebar'),ov=document.getElementById('overlay');
+  const open=()=>{sb.classList.add('open');ov.classList.add('on');},close=()=>{sb.classList.remove('open');ov.classList.remove('on');};
+  document.getElementById('menuBtn').addEventListener('click',open);ov.addEventListener('click',close);
+  sb.addEventListener('click',e=>{if(e.target.closest('.nav-link'))close();});}
+function wireSpy(){const links=[...document.querySelectorAll('.nav-link')];const map=new Map(links.map(l=>[l.getAttribute('href').slice(1),l]));
+  const targets=[...map.keys()].map(id=>document.getElementById(id)).filter(Boolean);
+  const io=new IntersectionObserver(es=>es.forEach(en=>{if(en.isIntersecting){links.forEach(l=>l.classList.remove('active'));const l=map.get(en.target.id);if(l)l.classList.add('active');}}),{rootMargin:'-45% 0px -50% 0px',threshold:0});
+  targets.forEach(t=>io.observe(t));}
+
+renderNav();renderModel();renderFeatures();renderEnv();
+wireSearch();wireCopy();wireEndpoints();wireMode();wireDrawer();wireSpy();
+</script>
+</body>
+</html>
