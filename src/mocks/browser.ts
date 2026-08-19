@@ -12,7 +12,9 @@ let startPromise: Promise<unknown> | null = null;
 
 export function startMockWorker() {
   if (!startPromise) {
-    startPromise = worker.start({ onUnhandledRequest: 'bypass' });
+    // `bypass` lets non-API requests (Next assets, fonts) through untouched;
+    // `quiet` silences MSW's per-request console logging in the prod demo.
+    startPromise = worker.start({ onUnhandledRequest: 'bypass', quiet: true });
   }
   return startPromise;
 }
